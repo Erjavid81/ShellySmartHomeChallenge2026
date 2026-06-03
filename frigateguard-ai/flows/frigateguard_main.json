@@ -1,0 +1,177 @@
+[
+  {
+    "id": "fg_tab_main",
+    "type": "tab",
+    "label": "FrigateGuard AI — Main",
+    "disabled": false,
+    "info": "Routes Frigate MQTT events to Shelly devices"
+  },
+  {
+    "id": "fg_mqtt_in",
+    "type": "mqtt in",
+    "z": "fg_tab_main",
+    "name": "Frigate Events",
+    "topic": "frigate/events",
+    "qos": "1",
+    "datatype": "json",
+    "broker": "fg_mqtt_broker",
+    "x": 120,
+    "y": 100,
+    "wires": [["fg_parse"]]
+  },
+  {
+    "id": "fg_parse",
+    "type": "function",
+    "z": "fg_tab_main",
+    "name": "Parse Frigate Event",
+    "func": "// Frigate event structure: {type, before, after}\nlet event = msg.payload;\nif (!event || !event.after) { return null; }\n\nlet after = event.after;\nmsg.eventType  = event.type;          // 'new', 'update', 'end'\nmsg.label      = after.label;         // 'person', 'car'\nmsg.score      = after.top_score;\nmsg.camera     = after.camera;\nmsg.hasSnap    = after.has_snapshot;\nmsg.faceName   = after.sub_label || null; // face recognition result\nmsg.plate      = after.attributes && after.attributes.license_plate\n                   ? after.attributes.license_plate : null;\n\n// Only act on 'new' events to avoid duplicate triggers\nif (msg.eventType !== 'new') { return null; }\n\nreturn msg;",
+    "outputs": 1,
+    "x": 310,
+    "y": 100,
+    "wires": [["fg_router"]]
+  },
+  {
+    "id": "fg_router",
+    "type": "switch",
+    "z": "fg_tab_main",
+    "name": "Route by detection type",
+    "property": "label",
+    "propertyType": "msg",
+    "rules": [
+      { "t": "eq", "v": "person", "vt": "str" },
+      { "t": "eq", "v": "car",    "vt": "str" }
+    ],
+    "checkall": "false",
+    "outputs": 2,
+    "x": 520,
+    "y": 100,
+    "wires": [["fg_person_check"], ["fg_lpr_check"]]
+  },
+  {
+    "id": "fg_person_check",
+    "type": "switch",
+    "z": "fg_tab_main",
+    "name": "Known face?",
+    "property": "faceName",
+    "propertyType": "msg",
+    "rules": [
+      { "t": "nnull" },
+      { "t": "null"  }
+    ],
+    "checkall": "false",
+    "outputs": 2,
+    "x": 200,
+    "y": 220,
+    "wires": [["fg_known_face"], ["fg_unknown_visitor"]]
+  },
+  {
+    "id": "fg_known_face",
+    "type": "http request",
+    "z": "fg_tab_main",
+    "name": "Shelly 1 Gen3 — Hallway Light ON (5 min)",
+    "method": "POST",
+    "ret": "txt",
+    "url": "http://192.168.1.50/rpc/Switch.Set",
+    "tls": "",
+    "x": 460,
+    "y": 200,
+    "wires": [["fg_telegram_welcome"]]
+  },
+  {
+    "id": "fg_known_face_payload",
+    "type": "function",
+    "z": "fg_tab_main",
+    "name": "Build payload — light on",
+    "func": "msg.payload = JSON.stringify({id:0, on:true, toggle_after:300});\nmsg.headers = {'Content-Type':'application/json'};\nreturn msg;",
+    "outputs": 1,
+    "x": 240,
+    "y": 200,
+    "wires": [["fg_known_face"]]
+  },
+  {
+    "id": "fg_unknown_visitor",
+    "type": "http request",
+    "z": "fg_tab_main",
+    "name": "Shelly Plus Plug S — Doorbell",
+    "method": "GET",
+    "ret": "txt",
+    "url": "http://192.168.1.51/relay/0?turn=on&timer=5",
+    "tls": "",
+    "x": 460,
+    "y": 260,
+    "wires": [["fg_telegram_unknown"]]
+  },
+  {
+    "id": "fg_lpr_check",
+    "type": "function",
+    "z": "fg_tab_main",
+    "name": "Check plate whitelist",
+    "func": "// Add your authorized plates here\nlet whitelist = ['AB123CD', 'EF456GH', 'IJ789KL'];\nlet plate = msg.plate ? msg.plate.toUpperCase() : null;\n\nif (!plate || whitelist.indexOf(plate) !== -1) {\n  // No plate detected or plate is authorized\n  return [msg, null];\n} else {\n  msg.unknownPlate = plate;\n  return [null, msg];\n}",
+    "outputs": 2,
+    "x": 200,
+    "y": 360,
+    "wires": [[], ["fg_warning_light"]]
+  },
+  {
+    "id": "fg_warning_light",
+    "type": "http request",
+    "z": "fg_tab_main",
+    "name": "Shelly Dimmer — Warning Light",
+    "method": "POST",
+    "ret": "txt",
+    "url": "http://192.168.1.52/rpc/Light.Set",
+    "tls": "",
+    "x": 460,
+    "y": 360,
+    "wires": [["fg_telegram_plate"]]
+  },
+  {
+    "id": "fg_telegram_welcome",
+    "type": "function",
+    "z": "fg_tab_main",
+    "name": "Telegram — Welcome home",
+    "func": "// Requires node-red-contrib-telegrambot\n// Configure your bot token and chat ID in the Telegram node\nmsg.payload = {\n  chatId: 'YOUR_CHAT_ID',\n  type: 'message',\n  content: '🏠 Welcome home, ' + (msg.faceName || 'family') + '! Hallway light is on.'\n};\nreturn msg;",
+    "outputs": 1,
+    "x": 720,
+    "y": 200,
+    "wires": [[]]
+  },
+  {
+    "id": "fg_telegram_unknown",
+    "type": "function",
+    "z": "fg_tab_main",
+    "name": "Telegram — Unknown visitor",
+    "func": "msg.payload = {\n  chatId: 'YOUR_CHAT_ID',\n  type: 'message',\n  content: '🔔 Unknown visitor detected at ' + msg.camera + ' (score: ' + Math.round(msg.score * 100) + '%)'\n};\nreturn msg;",
+    "outputs": 1,
+    "x": 720,
+    "y": 260,
+    "wires": [[]]
+  },
+  {
+    "id": "fg_telegram_plate",
+    "type": "function",
+    "z": "fg_tab_main",
+    "name": "Telegram — Unknown plate",
+    "func": "msg.payload = {\n  chatId: 'YOUR_CHAT_ID',\n  type: 'message',\n  content: '🚗 Unknown plate detected: ' + msg.unknownPlate + ' — camera: ' + msg.camera\n};\nreturn msg;",
+    "outputs": 1,
+    "x": 720,
+    "y": 360,
+    "wires": [[]]
+  },
+  {
+    "id": "fg_mqtt_broker",
+    "type": "mqtt-broker",
+    "name": "Local Mosquitto",
+    "broker": "192.168.1.222",
+    "port": "1883",
+    "clientid": "frigateguard-nodered",
+    "usetls": false,
+    "compatmode": false,
+    "keepalive": "60",
+    "cleansession": true,
+    "credentials": {
+      "user": "mqtt_user",
+      "password": "mqtt_pass"
+    }
+  }
+]

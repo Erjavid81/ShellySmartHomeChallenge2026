@@ -1,0 +1,67 @@
+# FrigateGuard AI — Frigate NVR sample configuration
+# Adapt IPs, credentials, and camera names to your setup.
+# Place this at: /your/frigate/config/config.yml
+
+mqtt:
+  enabled: true
+  host: 192.168.1.222       # Your MQTT broker IP
+  port: 1883
+  topic_prefix: frigate
+  user: mqtt_user
+  password: mqtt_pass
+
+# Face recognition (requires Frigate 0.14+)
+face_recognition:
+  enabled: true
+
+# License plate recognition
+lpr:
+  enabled: true
+
+detectors:
+  cpu:
+    type: cpu
+
+cameras:
+  front_door:
+    ffmpeg:
+      inputs:
+        - path: rtsp://user:pass@192.168.1.10:554/stream1
+          roles: [detect]
+    detect:
+      enabled: true
+      width: 1920
+      height: 1080
+      fps: 5
+    objects:
+      track: [person, car]
+      filters:
+        person:
+          min_score: 0.7
+          threshold: 0.8
+    face_recognition:
+      enabled: true
+      min_area: 5000          # minimum face pixel area — increase if false positives
+    # Define detection zones to reduce false positives
+    zones:
+      entrance:
+        coordinates: 0,0,1920,1080
+    record:
+      enabled: false          # FrigateGuard uses detection only, not recording
+
+  driveway:
+    ffmpeg:
+      inputs:
+        - path: rtsp://user:pass@192.168.1.11:554/stream1
+          roles: [detect]
+    detect:
+      enabled: true
+      width: 1920
+      height: 1080
+      fps: 5
+    objects:
+      track: [car]
+    lpr:
+      enabled: true
+    record:
+      enabled: false
