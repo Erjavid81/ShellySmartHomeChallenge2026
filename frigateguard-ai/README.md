@@ -28,67 +28,48 @@ No cloud. No internet dependency. No third-party services.
 
 ### Architecture
 
-```
-Cameras (RTSP)
-     │
-     ▼
-┌──────────────┐     MQTT events      ┌────────────────┐    HTTP/RPC    ┌─────────────────┐
-│  Frigate NVR │ ──────────────────▶ │   Node-RED     │ ────────────▶ │  Shelly devices  │
-│  (Docker)    │  frigate/events      │  (flow logic)  │               │  (local network) │
-└──────────────┘                      └────────────────┘               └─────────────────┘
-                                              │
-                                              ▼
-                                     Telegram notifications
-                                     + HA dashboard logging
-```
-
+Usa il codice con cautela.Cameras (RTSP)│▼┌──────────────┐     MQTT events      ┌────────────────┐    HTTP/RPC    ┌─────────────────┐│  Frigate NVR │ ──────────────────▶ │   Node-RED     │ ────────────▶ │  Shelly devices  ││  (Docker)    │  frigate/events      │  (flow logic)  │               │  (local network) │└──────────────┘                      └────────────────┘               └─────────────────┘│▼Telegram notifications+ HA dashboard logging
 ### Hardware
+
 
 | Device | Role |
 |---|---|
-| Shelly 1 Gen3 | Hallway light relay — turns on when a known face is recognized |
-| Shelly Plus Plug S | Smart plug powering the doorbell — activates for unknown visitors |
-| Shelly Dimmer (0-10V) | External warning light — activates for unrecognized license plates |
-| Shelly BLU Button1 | Manual override and system test |
+| **Shelly 1 Gen3** | Hallway light relay — turns on when a known face is recognized |
+| **Shelly Plus Plug S** | Smart plug powering the doorbell/siren — activates for unknown visitors |
+| **Shelly Plus RGBW PM** | External warning light — triggers a red flashing mode for unrecognized plates |
+| **Shelly BLU Button1** | Manual override and system test (via Gen2/Gen3 local BLE Gateway) |
 
 ### Detection Scenarios
 
 **Scenario 1 — Recognized family member**
-> Frigate detects a known face (confidence > 0.90) → Node-RED calls Shelly 1 Gen3 API → hallway light turns on for 5 minutes → Telegram push with snapshot: "Welcome home!"
+> Frigate detects a known face (confidence > 0.90) → Node-RED calls Shelly 1 Gen3 API → hallway light turns on for 5 minutes (`toggle_after: 300`) → Telegram push with snapshot: "Welcome home!"
 
 **Scenario 2 — Unknown visitor at the door**
-> Frigate detects a person, face unknown → Node-RED activates Shelly Plus Plug S (doorbell) → Telegram notification with snapshot + inline buttons "Open door" / "Ignore"
+> Frigate detects a person, face unknown → Node-RED activates Shelly Plus Plug S (doorbell/siren) → Telegram notification with snapshot + inline buttons "Open door" / "Ignore"
 
 **Scenario 3 — Unrecognized vehicle (LPR)**
-> Frigate reads a plate not in the whitelist → Node-RED activates warning light (red mode via Shelly Dimmer) → Event logged to Home Assistant dashboard with image
+> Frigate reads a plate not in the whitelist → Node-RED activates warning light (Red alert via Shelly Plus RGBW PM) → Event logged to Home Assistant dashboard with image
 
 ---
 
 ## Tech Stack
 
+
 | Component | Detail |
 |---|---|
 | **Host** | Mac Mini M4, 16GB RAM — Docker for all services |
-| **Frigate NVR** | v0.17, face recognition + LPR + person detection |
+| **Frigate NVR** | v0.14, face recognition + LPR + person detection |
 | **Cameras** | Ubiquiti G5 Turret Ultra (4K), IMOU PTZ — RTSP via go2rtc |
 | **MQTT** | Mosquitto 2.0, local broker |
 | **Node-RED** | v3.1, flows exported in this repo |
-| **Shelly devices** | Shelly 1 Gen3, Shelly Plus Plug S, Shelly BLU Button1 |
-| **Network** | Unifi UDM Pro, dedicated camera VLAN (VLAN 20) |
+| **Shelly devices** | Shelly 1 Gen3, Shelly Plus Plug S, Shelly Plus RGBW PM |
+| **Network** | Unifi UDM Pro, dedicated camera VLAN (VLAN 20) & IoT VLAN (VLAN 30) |
 | **Notifications** | Telegram Bot API |
 | **Dashboard** | Home Assistant with Lovelace |
 
 ---
 
 ## Installation
-
-### Prerequisites
-
-- Docker and Docker Compose
-- Frigate NVR configured with at least one RTSP camera
-- Mosquitto MQTT broker running
-- Shelly devices on the same local network
-- Node-RED (Docker container recommended)
 
 ### Step 1 — Frigate MQTT configuration
 
@@ -120,19 +101,20 @@ cameras:
 
 ### Step 2 — Import Node-RED flows
 
-1. Open Node-RED (`http://your-host:1880`)
-2. Menu → Import → paste content of `flows/frigateguard_main.json`
-3. Edit the Shelly device IPs in the HTTP Request nodes
-4. Edit your Telegram bot token and chat ID
-5. Deploy
+1. Open Node-RED (`http://your-host:1880`).
+2. Menu → Import → paste content of `flows/frigateguard_main.json`.
+3. Configure the HTTP Request nodes with raw JSON payloads and direct static IPs (avoiding mDNS/discovery over firewalled VLANs).
+4. Edit your Telegram bot token and chat ID.
+5. Deploy.
 
 ### Step 3 — Shelly device configuration
 
+
 | Device | Config |
 |---|---|
-| Shelly 1 Gen3 (hallway light) | Relay mode, static IP, timer 5 min |
-| Shelly Plus Plug S (doorbell) | On/off via HTTP API, static IP |
-| Shelly Dimmer (warning light) | 0-10V mode, static IP |
+| **Shelly 1 Gen3** (hallway light) | Relay mode, static IP |
+| **Shelly Plus Plug S** (doorbell) | Outlet mode, static IP |
+| **Shelly Plus RGBW PM** (warning light) | RGBW mode, static IP, connected to Red LED channel |
 
 ### Step 4 — Test
 
@@ -142,36 +124,28 @@ Use the included test script to simulate a Frigate event:
 bash scripts/test_mqtt_event.sh
 ```
 
-This publishes a mock `frigate/events` payload to your broker. You should see the corresponding Shelly device activate within ~800ms.
+This publishes a mock `frigate/events` payload to your broker. You should see the corresponding Shelly device activate within ~300ms.
 
 ---
 
-## API Calls (Shelly RPC)
+## API Calls (Shelly RPC — Gen2/Gen3 Architecture)
 
-**Turn on hallway light for 5 minutes:**
-```
-POST http://192.168.1.50/rpc/Switch.Set
-Body: {"id":0,"on":true,"toggle_after":300}
-```
+All target devices share the modern Shelly RPC protocol. Node-RED transmits local commands via **HTTP POST** requests to ensure instant execution across segregated subnets.
 
-**Activate doorbell plug:**
-```
-GET http://192.168.1.51/relay/0?turn=on&timer=5
-```
-
-**Set warning light red:**
-```
-POST http://192.168.1.52/rpc/Light.Set
-Body: {"id":0,"on":true,"brightness":80}
-```
-
+**1. Turn on hallway light for 5 minutes (Shelly 1 Gen3):**
+POST 192.168.1Body: {"id":0,"on":true,"toggle_after":300}
+**2. Activate doorbell plug for 5 seconds (Shelly Plus Plug S):**
+POST 192.168.1Body: {"id":0,"on":true,"toggle_after":5}
+**3. Set warning light to Red at 80% brightness (Shelly Plus RGBW PM):**
+POST 192.168.1Body: {"id":0,"on":true,"rgb":,"white":0,"brightness":80}
 ---
 
 ## Performance
 
+
 | Metric | Value |
 |---|---|
-| Latency: detection → Shelly action | < 800ms |
+| Latency: detection → Shelly action | < 300ms (Fully local network) |
 | Face recognition accuracy | ~94% (good lighting) |
 | False positives (person detection) | < 3% (detection zones configured) |
 | System uptime (30 days) | 99.6% |
@@ -179,32 +153,18 @@ Body: {"id":0,"on":true,"brightness":80}
 
 ---
 
-## Network Security
+## Network Security & Cross-VLAN Routing
 
-- Cameras on a dedicated VLAN (VLAN 20) — no direct internet access
-- Shelly devices on a separate IoT VLAN (VLAN 30)
-- Node-RED has controlled access to both VLANs via Unifi firewall rules
-- Frigate exposed externally only via Cloudflare Tunnel with authentication
-- MQTT secured with username/password, no external exposure
+- **Isolation:** Cameras sit on VLAN 20 (No internet access). Shelly IoT hardware resides on VLAN 30.
+- **Inter-VLAN Communication:** Unifi UDM Pro firewall rules restrict access: only the Node-RED host IP can punch through to VLAN 30 on port `80` (HTTP RPC). 
+- **Reliability:** Standard Node-RED "Shelly" nodes rely on mDNS/CoAP UDP broadcasting, which fails across firewalled subnets. FrigateGuard AI bypasses this by using raw **HTTP Request** nodes mapping explicit static IPs.
+- **External access:** Frigate is exposed externally only via an authenticated Cloudflare Tunnel.
 
 ---
 
 ## Files
 
-```
-frigateguard-ai/
-  README.md
-  flows/
-    frigateguard_main.json       Node-RED main flow
-    frigateguard_telegram.json   Telegram notification flow
-  config/
-    frigate_sample.yml           Frigate config example
-    mosquitto.conf               MQTT broker config
-  scripts/
-    test_mqtt_event.sh           Simulate a Frigate event for testing
-    shelly_api_test.py           Test Shelly device connectivity
-```
-
+frigateguard-ai/README.mdflows/frigateguard_main.json       Node-RED main flow (HTTP RPC endpoints)frigateguard_telegram.json   Telegram notification flowconfig/frigate_sample.yml           Frigate config examplemosquitto.conf               MQTT broker configscripts/test_mqtt_event.sh           Simulate a Frigate event for testingshelly_api_test.py           Test Shelly device connectivity
 ---
 
 ## Author
