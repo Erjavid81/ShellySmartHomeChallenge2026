@@ -1,4 +1,4 @@
-# FrigateGuard AI — Frigate NVR sample configuration
+# FrigateGuard AI — Frigate NVR v0.17 sample configuration
 # Adapt IPs, credentials, and camera names to your setup.
 # Place this at: /your/frigate/config/config.yml
 
@@ -10,13 +10,13 @@ mqtt:
   user: mqtt_user
   password: mqtt_pass
 
-# Face recognition (requires Frigate 0.14+)
+# Global Hardware Accelerated Enrichments (New in v0.17)
 face_recognition:
-  enabled: true
+  enabled: true             # Global toggle for native face recognition
+  detection_threshold: 0.7  # Default threshold before running recognition
 
-# License plate recognition
 lpr:
-  enabled: true
+  enabled: true             # Global toggle for native License Plate Recognition
 
 detectors:
   cpu:
@@ -34,14 +34,17 @@ cameras:
       height: 1080
       fps: 5
     objects:
-      track: [person, car]
+      # CRITICAL FOR v0.17: You must track 'face' attribute along with 'person'
+      track: 
+        - person
+        - face
       filters:
         person:
           min_score: 0.7
           threshold: 0.8
     face_recognition:
       enabled: true
-      min_area: 5000          # minimum face pixel area — increase if false positives
+      min_area: 5000          # Minimum face pixel area to process
     # Define detection zones to reduce false positives
     zones:
       entrance:
@@ -60,7 +63,10 @@ cameras:
       height: 1080
       fps: 5
     objects:
-      track: [car]
+      # CRITICAL FOR v0.17: You must track 'license_plate' attribute along with 'car'
+      track: 
+        - car
+        - license_plate
     lpr:
       enabled: true
     record:
