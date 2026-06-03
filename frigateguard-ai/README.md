@@ -145,15 +145,44 @@ This publishes a mock `frigate/events` payload to your broker. You should see th
 All target devices share the modern Shelly RPC protocol. Node-RED transmits local commands via **HTTP POST** requests to ensure instant execution across segregated subnets.
 
 **1. Turn on hallway light for 5 minutes (Shelly 1 Gen3):**
-POST 192.168.1Body: {"id":0,"on":true,"toggle_after":300}
+```http
+POST http://192.168.1
+Content-Type: application/json
+
+{
+  "id": 0,
+  "on": true,
+  "toggle_after": 300
+}
+```
+
 **2. Activate doorbell plug for 5 seconds (Shelly Plus Plug S):**
-POST 192.168.1Body: {"id":0,"on":true,"toggle_after":5}
+```http
+POST http://192.168.1
+Content-Type: application/json
+
+{
+  "id": 0,
+  "on": true,
+  "toggle_after": 5
+}
+```
+
 **3. Set warning light to Red at 80% brightness (Shelly Plus RGBW PM):**
-POST 192.168.1Body: {"id":0,"on":true,"rgb":,"white":0,"brightness":80}
----
+```http
+POST http://192.168.1
+Content-Type: application/json
+
+{
+  "id": 0,
+  "on": true,
+  "rgb": ,
+  "white": 0,
+  "brightness": 80
+}
+```
 
 ## Performance
-
 
 | Metric | Value |
 |---|---|
