@@ -176,8 +176,19 @@ POST 192.168.1Body: {"id":0,"on":true,"rgb":,"white":0,"brightness":80}
 
 ## Files
 
-frigateguard-ai/README.mdflows/frigateguard_main.json       Node-RED main flow (HTTP RPC endpoints)frigateguard_telegram.json   Telegram notification flowconfig/frigate_sample.yml           Frigate config examplemosquitto.conf               MQTT broker configscripts/test_mqtt_event.sh           Simulate a Frigate event for testingshelly_api_test.py           Test Shelly device connectivity
----
+```
+frigateguard-ai/
+  README.md
+  flows/
+    frigateguard_main.json       Node-RED main flow
+    frigateguard_telegram.json   Telegram notification flow
+  config/
+    frigate_sample.yml           Frigate config example
+    mosquitto.conf               MQTT broker config
+  scripts/
+    test_mqtt_event.sh           Simulate a Frigate event for testing
+    shelly_api_test.py           Test Shelly device connectivity
+```
 
 ## Author
 
