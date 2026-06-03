@@ -12,13 +12,11 @@ This repository is split into two specialized projects. Click the links below to
 *   **Category:** Build the Logic (Scripting & Logic)
 *   **Core Tech:** Shelly Plus RGBW PM + Shelly BLU Button1 + Native JavaScript (mJS)
 *   **Description:** Control bathroom lighting with 3 unique behaviors from a single wall button running entirely locally inside the Shelly firmware. Includes a smooth, non-blocking 8-second color-dissolve "Emotional Mode" loop optimized for Gen2/Gen3 RPC APIs.
-*   **Status:** 🚀 Code finalized and validated.
 
 ### 2. 🎯 [FrigateGuard AI](./frigateguard-ai)
 *   **Category:** Solve the Problem (Real-World Solution)
 *   **Core Tech:** Frigate NVR v0.17 + Node-RED + Shelly 1 Gen3 + Shelly Plus Plug S + Shelly Plus RGBW PM
 *   **Description:** Bridges local AI video analytics (facial recognition, LPR, object tracking) directly into instant physical home reactions with sub-300ms latency. Bypasses cross-VLAN firewall limitations by mapping explicit local RPC HTTP POST commands across firewalled UniFi subnets.
-*   **Status:** 🚀 Flows and sample configurations finalized.
 
 ---
 
