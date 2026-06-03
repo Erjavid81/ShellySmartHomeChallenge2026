@@ -28,7 +28,19 @@ No cloud. No internet dependency. No third-party services.
 
 ### Architecture
 
-Usa il codice con cautela.Cameras (RTSP)│▼┌──────────────┐     MQTT events      ┌────────────────┐    HTTP/RPC    ┌─────────────────┐│  Frigate NVR │ ──────────────────▶ │   Node-RED     │ ────────────▶ │  Shelly devices  ││  (Docker)    │  frigate/events      │  (flow logic)  │               │  (local network) │└──────────────┘                      └────────────────┘               └─────────────────┘│▼Telegram notifications+ HA dashboard logging
+```
+Cameras (RTSP)
+     │
+     ▼
+┌──────────────┐     MQTT events      ┌────────────────┐    HTTP/RPC    ┌─────────────────┐
+│  Frigate NVR │ ──────────────────▶ │   Node-RED     │ ────────────▶ │  Shelly devices  │
+│  (Docker)    │  frigate/events      │  (flow logic)  │               │  (local network) │
+└──────────────┘                      └────────────────┘               └─────────────────┘
+                                              │
+                                              ▼
+                                     Telegram notifications
+                                     + HA dashboard logging
+```
 ### Hardware
 
 
