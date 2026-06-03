@@ -1,4 +1,4 @@
-# 🏆 Shelly Smart Home Challenge 2026 — Official Submissions
+# Shelly Smart Home Challenge 2026 — Official Submissions
 
 Welcome to my official repository for the **Shelly Smart Home Challenge 2026**. This repository acts as a central hub for two distinct home automation projects built entirely on local architecture, sub-second latency, and zero cloud dependency.
 
@@ -34,5 +34,3 @@ Both submissions are bound together by three strict engineering choices:
 ## 👤 Author
 
 *   **Davide** — Brescia, Italy
-*   Shelly Smart Home Challenge 2026 Entry
-*   `#ShellySmartHomeChallenge2026` `#ShellyScript` 
