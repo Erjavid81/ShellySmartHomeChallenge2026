@@ -1,8 +1,8 @@
-# 🛁 BagnoEmotional — Multi-Mood Bathroom Light with a Single Button
+# BagnoEmotional — Multi-Mood Bathroom Light with a Single Button
 
 > **Shelly Smart Home Challenge 2026 — Category: Build the Logic**
 
-Control your bathroom lights with **3 different behaviors from a single wall button** — all running natively on the Shelly device itself. No hub. No cloud. No Home Assistant. No Node-RED. Just a Shelly script.
+Control your bathroom lights with **3 different behaviors from a single wall button** — all running natively on the Shelly device itself. No hub. No cloud. No Home Assistant. No Node-RED. Just a single local Shelly script.
 
 ---
 
@@ -11,53 +11,49 @@ Control your bathroom lights with **3 different behaviors from a single wall but
 My bathroom had a plain white bulb and a regular wall switch. I wanted three distinct behaviors:
 
 - **Quick on/off** without thinking about it
-- **Instant reset to a clean 3000K white** — perfect for mirror, makeup, shaving
+- **Instant reset to a clean 3000K white** — perfect for mirror, makeup, and shaving
 - **A slow mood-light mode** that cycles through calming RGB colors with smooth fade transitions — great for an evening bath
 
-Every solution I found required a hub, a cloud service, or a full home automation stack. I wanted something that works locally, survives internet outages, and fits in a wall-mounted button.
+Every solution I found required a hub, a cloud service, or a heavy home automation stack. I wanted something that works locally, survives internet outages, and fits entirely inside a wall-mounted button.
 
 ---
 
 ## The Solution
 
-A JavaScript script loaded directly onto a **Shelly Plus RGBW PM**, paired with a **Shelly BLU Button1** mounted on the wall. The script handles all three behaviors natively — the logic lives inside the device.
+A JavaScript script loaded directly onto a **Shelly Plus RGBW PM**, paired with a **Shelly BLU Button1** mounted on the wall. The script handles all three behaviors natively — the logic lives entirely inside the device.
 
 ### Hardware
 
+
 | Device | Role |
 |---|---|
-| Shelly Plus RGBW PM | RGBW light controller + BLE Gateway for the button |
-| Shelly BLU Button1 | Wall-mounted button (BLE) |
-| RGBW bulbs / LED strip | Bathroom lights (connected to the RGBW PM output) |
+| **Shelly Plus RGBW PM** | RGBW light controller + BLE Gateway for the button |
+| **Shelly BLU Button1** | Wall-mounted button (BLE) |
+| **RGBW LED strip / bulbs** | Bathroom lights (connected to the RGBW PM outputs) |
 
 ### Button Behaviors
 
+
 | Action | Effect |
 |---|---|
-| **1 click** | Toggle light on/off |
+| **1 click** | Toggle light on/off (retains last state) |
 | **2 clicks** | Reset to warm white 3000K (smooth 3-second fade) |
-| **Long press** | Start **Emotional mode**: slow RGB color cycling with 8-second dissolve transitions |
+| **Long press** | Start **Emotional mode**: slow RGB color cycling with 8-second dissolve transitions every 10 seconds |
 | **Long press again** | Stop Emotional mode, return to warm white |
 
 ---
 
 ## How It Works
 
-The script uses the Shelly Gen2+ native JavaScript engine:
+The script uses the Shelly Gen2+ native JavaScript engine (*mJS*):
 
-- `Shelly.addEventHandler()` listens for BLU Button1 events via BTHome/BLE
-- `single_push` → `RGB.Toggle`
-- `double_push` → `RGBW.Set` with pre-calculated 3000K warm white values (R:255 G:197 B:88 W:200)
-- `long_push` → starts a `Timer.set()` loop that picks a random color from a 9-color palette and calls `RGB.Set` with `transition_duration: 8` for the dissolve effect
-- A second long press clears the timer and returns to warm white
+- `Shelly.addEventHandler()` listens for BLU Button1 events forwarded by the local BLE Gateway.
+- **Single click** → Toggles the current state using the global `Light` component.
+- **Double click** → Calls `Light.Set` with pre-calculated 3000K values (`rgb: [255, 197, 88]` and `white: 200` for the dedicated white channel) over a 3-second transition.
+- **Long press** → Starts a `Timer.set()` loop. Every 10 seconds, it picks a color from a 9-color palette and calls `Light.Set` with a `transition_duration: 8` for a smooth, continuous dissolve effect.
+- **Second long press** → Clears the running timer and returns safely to warm white mode.
 
-### Color Palette (Emotional Mode)
-
-```
-Teal · Indigo · Blue-Violet · Cornflower Blue
-Medium Purple · Thistle · Dark Turquoise
-Dark Slate Blue · Medium Orchid
-```
+> ⚠️ **Note on Timing:** The color cycle timer interval is set to **10 seconds** while the transition lasts **8 seconds**. This 2-second buffer prevents PWM motor overlap, allowing the LED strip to rest briefly on each color before dissolving into the next.
 
 ---
 
@@ -65,51 +61,56 @@ Dark Slate Blue · Medium Orchid
 
 ### Step 1 — Wire the lights to the Shelly Plus RGBW PM
 
-Connect your RGBW bulbs or LED strip to the R / G / B / W outputs of the controller. Power the device with 12V or 24V DC depending on your lights.
+Connect your RGBW LED strip or bulbs to the R / G / B / W outputs of the controller. Power the device with a 12V or 24V DC power supply adequate to your lighting load.
 
 ### Step 2 — Pair the BLU Button1 as a BLE source
 
-1. Open the Shelly Plus RGBW PM web interface
-2. Go to **Bluetooth → BLE Gateway**
-3. Enable BLE Gateway and scan for devices
-4. Find your BLU Button1 and associate it
-5. Note the component ID (e.g. `bthomesensor:200`)
+1. Open the Shelly Plus RGBW PM web interface.
+2. Go to **Settings → Bluetooth** and enable the **BLE Gateway**.
+3. Go to **Components** and add your **BLU Button1** via the bluetooth scanning wizard.
+4. Note the component ID generated by the device (e.g., `bthomesensor:200`).
 
 ### Step 3 — Load the script
 
-1. Go to **Scripts** in the device web interface
-2. Click **Create Script**, paste the contents of `bagno_emotional.js`
-3. Edit `CFG.bluAddr` with your BLU Button1 MAC address
-4. Edit `bthomesensor:200` if your component ID is different (check in Script Console)
-5. Save and enable **Run on startup**
-
-### Step 4 — Test
-
-- Single press → light toggles
-- Double press → smooth fade to warm white
-- Long press → Emotional mode starts cycling colors
-- Long press again → back to warm white
-
-> **Tip:** If double press triggers before long press is detected, adjust the firmware's input timing settings in the device web UI.
+1. Go to **Scripts** in the Shelly web interface.
+2. Click **Create Script** and paste the contents of `bagno_emotional.js`.
+3. Edit `CFG.bluAddr` with your BLU Button1 MAC address.
+4. Edit the component ID reference if it differs from your setup (e.g., `bthomesensor:200`).
+5. Click **Save** and enable **Run on startup**.
+6. Click **Start** to run the logic immediately.
 
 ---
 
 ## Configuration Reference
 
+The script is customized using the following JSON configuration object:
+
 ```javascript
 let CFG = {
-  rgbId: 0,                     // RGB component ID on the Shelly Plus RGBW PM
+  lightId: 0,                   // Native Light component ID on Shelly Plus RGBW PM
   bluAddr: "b4:35:22:fe:56:e5", // BLU Button1 MAC address — CHANGE THIS
   warmWhite: {
-    r: 255, g: 197, b: 88, w: 200,  // ~3000K warm white
-    bri: 100,
-    transition: 3                    // seconds
+    rgb: [255, 197, 88],        // ~3000K warm white mix
+    white: 200,                 // Dedicated white channel intensity
+    bri: 100,                   // Master brightness percentage
+    transition: 3               // Seconds for the fade-in effect
   },
   emotional: {
-    brightness: 80,
-    transition: 8,          // seconds of dissolve between colors
-    intervalMs: 8000,       // ms between color changes
-    palette: [ ... ]        // 9 colors — edit freely
+    brightness: 80,             // Soft brightness for emotional mode
+    white: 0,                   // White channel turned off to maximize color saturation
+    transition: 8,              // Seconds of dissolve transition between colors
+    intervalMs: 10000,          // 10000ms (10s) loop interval to allow a 2s color hold
+    palette: [
+      [0, 128, 128],            // Teal
+      [75, 0, 130],             // Indigo
+      [138, 43, 226],           // Blue-Violet
+      [100, 149, 237],          // Cornflower Blue
+      [147, 112, 219],          // Medium Purple
+      [216, 191, 216],          // Thistle
+      [0, 206, 209],            // Dark Turquoise
+      [72, 61, 139],            // Dark Slate Blue
+      [186, 85, 211]            // Medium Orchid
+    ]
   }
 };
 ```
@@ -118,18 +119,19 @@ let CFG = {
 
 ## Why This Works Without Any Hub
 
-Everything runs inside the Shelly Plus RGBW PM firmware. The script boots with the device, listens for BLE events from the button, and drives the lights directly via the internal RGB component API. No MQTT broker, no Node-RED, no Home Assistant, no internet connection needed.
+Everything runs locally inside the Shelly Plus RGBW PM firmware. The script boots instantly with the device, listens to BLE beacon frames from the button, and drives the hardware outputs via standard internal RPC methods (`Light.Set`). 
 
-This is the power of Shelly native scripting: the smart home logic lives *inside the device*.
+No MQTT broker, no Node-RED, no Home Assistant, and no active internet connection required. This is the true power of Shelly native scripting: the smart home logic lives *inside the device*.
 
 ---
 
 ## Files
 
+
 | File | Description |
 |---|---|
-| `bagno_emotional.js` | The full script (197 lines, commented) |
-| `README.md` | This file |
+| `bagno_emotional.js` | The full local script (commented, using Gen2 RPC API) |
+| `README.md` | This documentation file |
 
 ---
 
