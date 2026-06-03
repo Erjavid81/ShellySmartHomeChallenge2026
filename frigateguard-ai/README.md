@@ -209,6 +209,6 @@ frigateguard-ai/
 
 ## Author
 
-Davide — Milan, Italy
+Davide — Brescia, Italy
 Shelly Smart Home Challenge 2026
 `#ShellySmartHomeChallenge2026` `#FrigateGuardAI` `#ShellyIoT` `#AIHomeSecurity`
