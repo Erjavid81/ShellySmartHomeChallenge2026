@@ -70,7 +70,7 @@ Cameras (RTSP)
 | Component | Detail |
 |---|---|
 | **Host** | Mac Mini M4, 16GB RAM — Docker for all services |
-| **Frigate NVR** | v0.14, face recognition + LPR + person detection |
+| **Frigate NVR** | v0.17, face recognition + LPR + person detection |
 | **Cameras** | Ubiquiti G5 Turret Ultra (4K), IMOU PTZ — RTSP via go2rtc |
 | **MQTT** | Mosquitto 2.0, local broker |
 | **Node-RED** | v3.1, flows exported in this repo |
