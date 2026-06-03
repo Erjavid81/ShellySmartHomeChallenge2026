@@ -135,6 +135,6 @@ This is the power of Shelly native scripting: the smart home logic lives *inside
 
 ## Author
 
-Davide — Milan, Italy
+Davide — Brescia, Italy
 Shelly Smart Home Challenge 2026
 `#ShellySmartHomeChallenge2026` `#BagnoEmotional` `#ShellyScript` `#NoHub`
